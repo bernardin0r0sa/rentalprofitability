@@ -22,6 +22,7 @@ public class Property {
 
     private double mortgage;
     private double utilities;
+    private double cashInvested;
     private boolean pool;
     private boolean garden;
     private boolean parking;
