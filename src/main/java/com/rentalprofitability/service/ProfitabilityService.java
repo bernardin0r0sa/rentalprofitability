@@ -8,6 +8,7 @@ import com.rentalprofitability.repository.PropertyRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
@@ -16,7 +17,7 @@ import java.util.concurrent.CompletableFuture;
 public class ProfitabilityService {
 
     final PropertyRepository repo;
-    final BrightdataService brightdataService;
+    final BrigthdataService brigthdataService;
     final OpenAIService openAIService;
 
     @Value("${brightdata.dataset.airbnb.id}")
@@ -26,17 +27,17 @@ public class ProfitabilityService {
      private String bookingDatasetId;
 
 
-    public ProfitabilityService(PropertyRepository repo, BrightdataService brightdataService , OpenAIService openAIService){
+    public ProfitabilityService(PropertyRepository repo, BrigthdataService brigthdataService, OpenAIService openAIService){
         this.repo = repo;
-        this.brightdataService=brightdataService;
+        this.brigthdataService = brigthdataService;
         this.openAIService=openAIService;
     }
 
-    public HashMap<Platform, String> getPlatformData(ProfitabilityRequest request){
+
+    private HashMap<Platform, String> getPlatformData(ProfitabilityRequest request){
         Optional<Property> property = repo.findById(request.propertyID());
         String jsonRequest;
         HashMap<Platform,String> jsonRequests = new HashMap<>();
-
 
         switch(request.platform()){
             case AIRBNB -> {
@@ -56,17 +57,15 @@ public class ProfitabilityService {
                 jsonRequests.put(Platform.BOOKING,jsonRequest);
 
                 return getMultipleBrightDataScrappingInfo(jsonRequests);
-
             }
         }
-
 return null;
     }
 
 
     private HashMap<Platform, String> getSingleBrightDataScrappingInfo(Platform Platform, String dataset, String jsonRequest){
         HashMap<Platform, String> brightDataResults = new HashMap<>();
-        String resultJson= brightdataService.scrapeShortRentalPlatforms(dataset,jsonRequest);
+        String resultJson= brigthdataService.scrapeShortRentalPlatforms(dataset,jsonRequest);
         brightDataResults.put(Platform,resultJson);
         return brightDataResults;
          }
@@ -79,11 +78,11 @@ return null;
         HashMap<Platform, String> brightDataResults = new HashMap<>();
 
         CompletableFuture<String> airbnbFuture = CompletableFuture.supplyAsync(() ->
-                brightdataService.scrapeShortRentalPlatforms(airbnbDatasetId,airbnbJsonRequest)
+                brigthdataService.scrapeShortRentalPlatforms(airbnbDatasetId,airbnbJsonRequest)
         );
 
         CompletableFuture<String> bookingFuture = CompletableFuture.supplyAsync(() ->
-                brightdataService.scrapeShortRentalPlatforms(bookingDatasetId,bookingJsonRequest)
+                brigthdataService.scrapeShortRentalPlatforms(bookingDatasetId,bookingJsonRequest)
         );
 
         // wait for BOTH to finish
@@ -100,13 +99,58 @@ return null;
     }
 
 
-    private String generateBookingRequestJson(Property property){
-        //TODO
-        return null;
+    private String generateBookingRequestJson(Property property) {
+        int guests = calculateGuests(property);
+        int rooms = (int) property.getBedrooms();
+        String checkIn = LocalDate.now().atStartOfDay().toString() + "Z";
+        String checkOut = LocalDate.now().plusDays(1).atStartOfDay().toString() + "Z";
+
+        return """
+            {
+                "input": [{
+                    "url": "https://www.booking.com",
+                    "location": "%s, %s",
+                    "check_in": "%s",
+                    "check_out": "%s",
+                    "adults": %d,
+                    "rooms": %d,
+                    "country": "%s",
+                    "property_type": "Entire homes & apartments",
+                    "currency": "EUR"
+                }]
+            }
+            """.formatted(property.getCity(), property.getCountry(),
+                checkIn, checkOut,
+                guests, rooms,
+                property.getCountry());
     }
 
-    private String generateAirbnbRequestJson(Property property){
-        //TODO
-return null;
+    private String generateAirbnbRequestJson(Property property) {
+        int guests = calculateGuests(property);
+        String checkIn = LocalDate.now().atStartOfDay().toString() + "Z";
+        String checkOut = LocalDate.now().plusDays(1).atStartOfDay().toString() + "Z";
+
+        return """
+            {
+                "input": [{
+                    "location": "%s, %s",
+                    "check_in": "%s",
+                    "check_out": "%s",
+                    "num_of_adults": %d,
+                    "num_of_children": 0,
+                    "num_of_infants": 0,
+                    "num_of_pets": 0,
+                    "currency": "EUR",
+                    "country": "%s"
+                }]
+            }
+            """.formatted(property.getCity(), property.getCountry(),
+                checkIn, checkOut,
+                guests, property.getCountry());
     }
+
+    private int calculateGuests(Property property) {
+        return (int) property.getBedrooms() * 2;
+    }
+
 }
