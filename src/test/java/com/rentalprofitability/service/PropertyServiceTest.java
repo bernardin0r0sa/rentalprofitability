@@ -14,7 +14,7 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(value = MockitoExtension.class)
 class PropertyServiceTest {
@@ -38,6 +38,15 @@ class PropertyServiceTest {
 
         assertNotNull(result);
         assertEquals(1L, result.getId());
+    }
+
+    @Test
+    void deleteProperty_shouldCallRepositoryDelete() {
+        doNothing().when(repo).deleteById(1L);
+
+        service.deleteProperty(1L);
+
+        verify(repo, times(1)).deleteById(1L);
     }
 
     @Test

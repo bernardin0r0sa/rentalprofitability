@@ -260,7 +260,8 @@ public class ProfitabilityService {
         double occupancyRate = occupancyRateConfig.getOccupancyRate(property.getCity());
         double estimatedMonthlyRevenue = averageNightlyRate * 30 * occupancyRate;
         double estimatedYearlyRevenue = estimatedMonthlyRevenue * 12;
-        double netMonthlyProfit = estimatedMonthlyRevenue - (property.getMortgage() + property.getUtilities() + propertyManagementFee);
+        double managementFeeAmount = estimatedMonthlyRevenue * (propertyManagementFee / 100);
+        double netMonthlyProfit = estimatedMonthlyRevenue - (property.getMortgage() + property.getUtilities() + managementFeeAmount);
         double ROI = (netMonthlyProfit * 12 / property.getCashInvested()) * 100;
         String result = String.format(
                 "Based on a cash investment of €%.0f, with an estimated monthly revenue of €%.0f, your annual ROI is %.1f%%.",
