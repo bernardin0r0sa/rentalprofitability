@@ -20,9 +20,18 @@ public class Property {
     @Column(columnDefinition = "TEXT")
     private String address;
 
+    @NotNull
+    @Positive
     private double mortgage;
+
+    @NotNull
+    @Positive
     private double utilities;
+
+    @NotNull
+    @Positive
     private double cashInvested;
+
     private boolean pool;
     private boolean garden;
     private boolean parking;
