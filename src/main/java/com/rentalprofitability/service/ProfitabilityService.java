@@ -1,10 +1,10 @@
 package com.rentalprofitability.service;
 
 import com.rentalprofitability.dto.ProfitabilityRequest;
+import com.rentalprofitability.dto.ProfitabilityResponse;
 import com.rentalprofitability.exception.PropertyNotFoundException;
 import com.rentalprofitability.model.Platform;
 import com.rentalprofitability.model.Property;
-import com.rentalprofitability.repository.PropertyRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -16,50 +16,56 @@ import java.util.concurrent.CompletableFuture;
 @Service
 public class ProfitabilityService {
 
-    final PropertyRepository repo;
+    final PropertyService propertyService;
     final BrigthdataService brigthdataService;
     final OpenAIService openAIService;
 
     @Value("${brightdata.dataset.airbnb.id}")
-     private String airbnbDatasetId;
+    private String airbnbDatasetId;
 
     @Value("${brightdata.dataset.booking.id}")
-     private String bookingDatasetId;
+    private String bookingDatasetId;
 
 
-    public ProfitabilityService(PropertyRepository repo, BrigthdataService brigthdataService, OpenAIService openAIService){
-        this.repo = repo;
+    public ProfitabilityService(PropertyService propertyService, BrigthdataService brigthdataService, OpenAIService openAIService){
+        this.propertyService = propertyService;
         this.brigthdataService = brigthdataService;
         this.openAIService=openAIService;
     }
 
+    public ProfitabilityResponse getProfitability(ProfitabilityRequest request){
+        Property property = propertyService.getProperty(request.propertyID());
+        HashMap<Platform, String> marketData = getPlatformData(property, request.platform());
 
-    private HashMap<Platform, String> getPlatformData(ProfitabilityRequest request){
-        Optional<Property> property = repo.findById(request.propertyID());
+        return null;
+    }
+
+    private HashMap<Platform, String> getPlatformData(Property property, Platform platform){
+
         String jsonRequest;
         HashMap<Platform,String> jsonRequests = new HashMap<>();
 
-        switch(request.platform()){
+        switch(platform){
             case AIRBNB -> {
-                jsonRequest = generateAirbnbRequestJson(property.orElseThrow(()-> new PropertyNotFoundException("Property Not found")));
+                jsonRequest = generateAirbnbRequestJson(property);
                 return getSingleBrightDataScrappingInfo(Platform.AIRBNB,airbnbDatasetId,jsonRequest);
             }
             case BOOKING -> {
-                jsonRequest = generateBookingRequestJson(property.orElseThrow(()-> new PropertyNotFoundException("Property Not found")));
+                jsonRequest = generateBookingRequestJson(property);
                 return getSingleBrightDataScrappingInfo(Platform.BOOKING, bookingDatasetId,jsonRequest);
             }
             case ALL -> {
                 // Airbnb
-                jsonRequest = generateAirbnbRequestJson(property.orElseThrow(()-> new PropertyNotFoundException("Property Not found")));
+                jsonRequest = generateAirbnbRequestJson(property);
                 jsonRequests.put(Platform.AIRBNB,jsonRequest);
                 // Booking
-                jsonRequest = generateBookingRequestJson(property.orElseThrow(()-> new PropertyNotFoundException("Property Not found")));
+                jsonRequest = generateBookingRequestJson(property);
                 jsonRequests.put(Platform.BOOKING,jsonRequest);
 
                 return getMultipleBrightDataScrappingInfo(jsonRequests);
             }
         }
-return null;
+        return null;
     }
 
 
@@ -68,7 +74,7 @@ return null;
         String resultJson= brigthdataService.scrapeShortRentalPlatforms(dataset,jsonRequest);
         brightDataResults.put(Platform,resultJson);
         return brightDataResults;
-         }
+    }
 
     private HashMap<Platform, String> getMultipleBrightDataScrappingInfo(HashMap<Platform,String> jsonRequests){
 

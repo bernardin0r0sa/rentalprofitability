@@ -3,7 +3,7 @@ package com.rentalprofitability.service;
 import com.rentalprofitability.dto.CreatePropertyRequest;
 import com.rentalprofitability.exception.PropertyNotFoundException;
 import com.rentalprofitability.model.Property;
-import com.rentalprofitability.repository.PropertyRepository;
+import com.rentalprofitability.repository.PropertyService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -20,10 +20,10 @@ import static org.mockito.Mockito.when;
 class PropertyServiceTest {
 
     @Mock
-    private PropertyRepository repo;
+    private PropertyService repo;
 
     @InjectMocks
-    private PropertyService service;
+    private com.rentalprofitability.service.PropertyService service;
 
     @Test
     void createProperty_shouldSaveAndReturnProperty() {
