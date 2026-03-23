@@ -49,7 +49,7 @@ public class ProfitabilityService {
 
         double averageNightlyRate = switch (request.rentaltype()) {
             case SHORT -> calculateAverage(marketData);
-            case LONG -> calculateAverage(marketData);
+            case LONG -> calculateLongAverage(request,property);
             case COMPARE -> throw new RuntimeException("Use /compare endpoint");
         };
 
@@ -65,7 +65,7 @@ public class ProfitabilityService {
                 property, RentalType.SHORT, calculateAverage(marketData), request.propertyManagementFee());
 
         ProfitabilityResponse longResponse = buildProfitabilityResponse(
-                property, RentalType.LONG, calculateAverage(marketData), request.propertyManagementFee());
+                property, RentalType.LONG, calculateLongAverage(request,property), request.propertyManagementFee());
 
         return new ProfitabilityCompareResponse(shortResponse, longResponse);
     }
@@ -251,15 +251,44 @@ public class ProfitabilityService {
         return total / marketData.size();
     }
 
+    private double calculateLongAverage(ProfitabilityRequest request,Property property) {
+
+        String prompt = String.format(
+                "Get me the average price for long term rent in %s, %s, near %s, " +
+                        "for a %d bedroom apartment with %d WC. " +
+                        "Give me only the average monthly rent price in %s as a plain number with no text, " +
+                        "no currency symbol, no explanation. Example: 2500",
+                property.getCountry(),
+                property.getCity(),
+                property.getAddress(),
+                (int) property.getBedrooms(),
+                (int) property.getWc(),
+                request.currency()
+        );
+
+        String rawResponse = openAIService.callOpenAI(prompt);
+
+        return Double.parseDouble(rawResponse.trim());
+    }
+
     private ProfitabilityResponse buildProfitabilityResponse(
             Property property,
             RentalType rentalType,
-            double averageNightlyRate,
+            double averageRate,
             double propertyManagementFee) {
 
-        double occupancyRate = occupancyRateConfig.getOccupancyRate(property.getCity());
-        double estimatedMonthlyRevenue = averageNightlyRate * 30 * occupancyRate;
-        double estimatedYearlyRevenue = estimatedMonthlyRevenue * 12;
+        double estimatedMonthlyRevenue;
+        double estimatedYearlyRevenue;
+
+        if (rentalType == RentalType.LONG) {
+            estimatedMonthlyRevenue = averageRate;
+            estimatedYearlyRevenue = averageRate * 12;
+        } else {
+            double occupancyRate = occupancyRateConfig.getOccupancyRate(property.getCity());
+            estimatedMonthlyRevenue = averageRate * 30 * occupancyRate;
+            estimatedYearlyRevenue = estimatedMonthlyRevenue * 12;
+        }
+
         double managementFeeAmount = estimatedMonthlyRevenue * (propertyManagementFee / 100);
         double netMonthlyProfit = estimatedMonthlyRevenue - (property.getMortgage() + property.getUtilities() + managementFeeAmount);
         double ROI = (netMonthlyProfit * 12 / property.getCashInvested()) * 100;
