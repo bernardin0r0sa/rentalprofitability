@@ -3,6 +3,7 @@ package com.rentalprofitability.service;
 import com.rentalprofitability.dto.CreatePropertyRequest;
 import com.rentalprofitability.exception.PropertyNotFoundException;
 import com.rentalprofitability.model.Property;
+import com.rentalprofitability.repository.PropertyRepository;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -11,9 +12,9 @@ import java.util.Optional;
 @Service
 public class PropertyService {
 
-    final com.rentalprofitability.repository.PropertyService repo;
+    final PropertyRepository repo;
 
-    public PropertyService(com.rentalprofitability.repository.PropertyService repo){
+    public PropertyService(PropertyRepository repo){
         this.repo = repo;
     }
 

@@ -1,6 +1,3 @@
-CREATE DATABASE IF NOT EXISTS rentalProfitability;
-
-USE rentalProfitability;
 
 CREATE TABLE IF NOT EXISTS property (
     id            BIGINT AUTO_INCREMENT PRIMARY KEY,
