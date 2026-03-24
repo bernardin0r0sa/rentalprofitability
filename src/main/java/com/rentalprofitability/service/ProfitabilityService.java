@@ -6,6 +6,7 @@ import com.rentalprofitability.dto.ProfitabilityResponse;
 import com.rentalprofitability.model.Platform;
 import com.rentalprofitability.model.Property;
 import com.rentalprofitability.model.RentalType;
+import com.rentalprofitability.util.CountryCodeConfig;
 import com.rentalprofitability.util.OccupancyRateConfig;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -26,6 +27,8 @@ public class ProfitabilityService {
     final BrigthdataService brigthdataService;
     final OpenAIService openAIService;
     final OccupancyRateConfig occupancyRateConfig;
+    final CountryCodeConfig countryCodeConfig;
+
 
     @Value("${brightdata.dataset.airbnb.id}")
     private String airbnbDatasetId;
@@ -36,11 +39,12 @@ public class ProfitabilityService {
     private final ObjectMapper mapper = new ObjectMapper();
 
 
-    public ProfitabilityService(PropertyService propertyService, BrigthdataService brigthdataService, OpenAIService openAIService, OccupancyRateConfig occupancyRateConfig){
+    public ProfitabilityService(PropertyService propertyService, BrigthdataService brigthdataService, OpenAIService openAIService, OccupancyRateConfig occupancyRateConfig,CountryCodeConfig countryCodeConfig ){
         this.propertyService = propertyService;
         this.brigthdataService = brigthdataService;
         this.openAIService=openAIService;
         this.occupancyRateConfig = occupancyRateConfig;
+        this.countryCodeConfig = countryCodeConfig;
     }
 
     public ProfitabilityResponse getProfitability(ProfitabilityRequest request) {
@@ -100,10 +104,10 @@ public class ProfitabilityService {
     }
 
 
-    private HashMap<Platform, String> getSingleBrightDataScrappingInfo(Platform Platform, String dataset, String jsonRequest){
+    private HashMap<Platform, String> getSingleBrightDataScrappingInfo(Platform platform, String dataset, String jsonRequest){
         HashMap<Platform, String> brightDataResults = new HashMap<>();
-        String resultJson= brigthdataService.scrapeShortRentalPlatforms(dataset,jsonRequest);
-        brightDataResults.put(Platform,resultJson);
+        String resultJson= brigthdataService.scrapeShortRentalPlatforms(platform,dataset,jsonRequest);
+        brightDataResults.put(platform,resultJson);
         return brightDataResults;
     }
 
@@ -115,11 +119,11 @@ public class ProfitabilityService {
         HashMap<Platform, String> brightDataResults = new HashMap<>();
 
         CompletableFuture<String> airbnbFuture = CompletableFuture.supplyAsync(() ->
-                brigthdataService.scrapeShortRentalPlatforms(airbnbDatasetId,airbnbJsonRequest)
+                brigthdataService.scrapeShortRentalPlatforms(Platform.AIRBNB, airbnbDatasetId,airbnbJsonRequest)
         );
 
         CompletableFuture<String> bookingFuture = CompletableFuture.supplyAsync(() ->
-                brigthdataService.scrapeShortRentalPlatforms(bookingDatasetId,bookingJsonRequest)
+                brigthdataService.scrapeShortRentalPlatforms(Platform.BOOKING,bookingDatasetId,bookingJsonRequest)
         );
 
         // wait for BOTH to finish
@@ -166,6 +170,7 @@ public class ProfitabilityService {
         int guests = calculateGuests(property);
         String checkIn = LocalDate.now().atStartOfDay().toString() + "Z";
         String checkOut = LocalDate.now().plusDays(1).atStartOfDay().toString() + "Z";
+        String countryCode = countryCodeConfig.getCountryCode(property.getCountry()); // here
 
         return """
             {
@@ -183,13 +188,14 @@ public class ProfitabilityService {
             }
             """.formatted(property.getCity(), property.getCountry(),
                 checkIn, checkOut,
-                guests, property.getCountry());
+                guests, countryCode);
     }
 
     private int calculateGuests(Property property) {
         return (int) property.getBedrooms() * 2;
     }
     private double parseAirbnbAveragePrice(String jsonResponse) {
+        System.out.println("RAW AIRBNB RESPONSE: " + jsonResponse); // temporary
         try {
             JsonNode root = mapper.readTree(jsonResponse);
             List<Double> prices = new ArrayList<>();

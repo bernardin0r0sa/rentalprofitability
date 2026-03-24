@@ -33,6 +33,9 @@ public class ProfitabilityServiceTest {
     @Mock
     private com.rentalprofitability.util.OccupancyRateConfig occupancyRateConfig;
 
+    @Mock
+    private com.rentalprofitability.util.CountryCodeConfig countryCodeConfig;
+
 
     @InjectMocks
     private com.rentalprofitability.service.ProfitabilityService profitabilityService;
@@ -98,7 +101,8 @@ public class ProfitabilityServiceTest {
         property.setParking(true);
         property.setId(1L);
 
-        when(brigthdataService.scrapeShortRentalPlatforms(isNull(), any(String.class))).thenReturn(resultJsonAirbnb);        when(propertyService.getProperty(any(Long.class))).thenReturn(property);
+        when(brigthdataService.scrapeShortRentalPlatforms(any(Platform.class),isNull(), any(String.class))).thenReturn(resultJsonAirbnb);
+        when(propertyService.getProperty(any(Long.class))).thenReturn(property);
         when(occupancyRateConfig.getOccupancyRate(any(String.class))).thenReturn(0.72);
 
         ProfitabilityResponse response = profitabilityService.getProfitability(profitabilityRequest);
@@ -181,8 +185,9 @@ public class ProfitabilityServiceTest {
         when(propertyService.getProperty(any(Long.class))).thenReturn(property);
         when(openAIService.callOpenAI(any(String.class))).thenReturn("1200");
         when(occupancyRateConfig.getOccupancyRate(any(String.class))).thenReturn(0.72);
-        when(brigthdataService.scrapeShortRentalPlatforms(isNull(), contains("num_of_adults"))).thenReturn(resultJsonAirbnb);
-        when(brigthdataService.scrapeShortRentalPlatforms(isNull(), contains("booking.com"))).thenReturn(resultJsonBooking);
+        when(countryCodeConfig.getCountryCode(any(String.class))).thenReturn("PT");
+        when(brigthdataService.scrapeShortRentalPlatforms(any(Platform.class),isNull(), contains("num_of_adults"))).thenReturn(resultJsonAirbnb);
+        when(brigthdataService.scrapeShortRentalPlatforms(any(Platform.class), isNull(), contains("booking.com"))).thenReturn(resultJsonBooking);
 
         ProfitabilityCompareResponse response = profitabilityService.getCompareProfitability(request);
 
