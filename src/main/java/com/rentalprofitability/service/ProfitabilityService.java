@@ -145,6 +145,7 @@ public class ProfitabilityService {
         int rooms = (int) property.getBedrooms();
         String checkIn = LocalDate.now().atStartOfDay().toString() + "Z";
         String checkOut = LocalDate.now().plusDays(1).atStartOfDay().toString() + "Z";
+        String countryCode = countryCodeConfig.getCountryCode(property.getCountry()); // here
 
         return """
             {
@@ -160,10 +161,10 @@ public class ProfitabilityService {
                     "currency": "EUR"
                 }]
             }
-            """.formatted(property.getCity(), property.getCountry(),
+            """.formatted(property.getCity(), countryCode,
                 checkIn, checkOut,
                 guests, rooms,
-                property.getCountry());
+                countryCode);
     }
 
     private String generateAirbnbRequestJson(Property property) {
@@ -215,6 +216,7 @@ public class ProfitabilityService {
     }
 
     private double parseBookingAveragePrice(String jsonResponse) {
+        System.out.println("RAW BOOKING RESPONSE: " + jsonResponse); // temporary
         try {
             JsonNode root = mapper.readTree(jsonResponse);
             List<Double> prices = new ArrayList<>();
