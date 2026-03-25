@@ -216,14 +216,26 @@ public class ProfitabilityService {
     }
 
     private double parseBookingAveragePrice(String jsonResponse) {
-        System.out.println("RAW BOOKING RESPONSE: " + jsonResponse); // temporary
         try {
-            JsonNode root = mapper.readTree(jsonResponse);
             List<Double> prices = new ArrayList<>();
+            String trimmed = jsonResponse.trim();
 
-            for (JsonNode listing : root) {
-                if (listing.has("original_price")) {
-                    prices.add(listing.get("original_price").asDouble());
+            if (trimmed.startsWith("[")) {
+                // Normal Json format
+                JsonNode root = mapper.readTree(trimmed);
+                for (JsonNode listing : root) {
+                    if (listing.has("original_price") && !listing.get("original_price").isNull()) {
+                        prices.add(listing.get("original_price").asDouble());
+                    }
+                }
+            } else {
+                // Multiple Json's lines instead of a single Json Array
+                for (String line : trimmed.split("\n")) {
+                    if (line.trim().isEmpty()) continue;
+                    JsonNode node = mapper.readTree(line.trim());
+                    if (node.has("original_price") && !node.get("original_price").isNull()) {
+                        prices.add(node.get("original_price").asDouble());
+                    }
                 }
             }
 
@@ -231,7 +243,6 @@ public class ProfitabilityService {
 
         } catch (Exception e) {
             throw new RuntimeException("Failed to parse Booking response");
-
         }
     }
 

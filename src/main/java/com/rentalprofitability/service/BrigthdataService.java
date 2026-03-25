@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
+import tools.jackson.databind.DeserializationFeature;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
@@ -22,7 +23,6 @@ public class BrigthdataService {
     private final RestClient restClient = RestClient.create();
     private final ObjectMapper mapper = new ObjectMapper();
 
-
     public String scrapeShortRentalPlatforms(Platform platform, String datasetId, String jsonRequest) {
         try {
             String fullUrl = buildUrl(platform, datasetId);
@@ -36,10 +36,8 @@ public class BrigthdataService {
                     .retrieve()
                     .body(String.class);
 
-            // Airbnb is async - needs polling
-            // Booking returns data directly
-            if (platform == Platform.AIRBNB) {
-                String snapshotId = extractSnapshotId(response);
+            String snapshotId = extractSnapshotId(response);
+            if (snapshotId!=null) {
                 log.info("[BRIGHTDATA] Snapshot ID received: {}", snapshotId);
                 return pollUntilReady(snapshotId);
             }
@@ -67,11 +65,20 @@ public class BrigthdataService {
     }
 
     private String extractSnapshotId(String response) {
+        if (response.trim().startsWith("{\"url\"") ||
+                response.trim().startsWith("[{\"url\"")) {
+            return null;
+        }
+
         try {
-            JsonNode root = mapper.readTree(response);
-            return root.get("snapshot_id").asText();
+            String firstObject = response.trim().split("\n")[0];
+            JsonNode root = mapper.readTree(firstObject);
+            if (root.has("snapshot_id")) {
+                return root.get("snapshot_id").asText();
+            }
+            return null;
         } catch (Exception e) {
-            throw new ExternalApiException("Failed to extract snapshot_id");
+            return null;
         }
     }
 
@@ -79,7 +86,7 @@ public class BrigthdataService {
         String snapshotUrl = "https://api.brightdata.com/datasets/v3/snapshot/"
                 + snapshotId + "?format=json";
 
-        for (int i = 0; i < 10; i++) {
+        for (int i = 0; i < 20; i++) {
             try {
                 Thread.sleep(30000);
 
@@ -103,5 +110,7 @@ public class BrigthdataService {
         }
         throw new ExternalApiException("BrightData timeout - data not ready after 50 seconds");
     }
+
+
 
 }
