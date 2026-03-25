@@ -3,6 +3,7 @@ package com.rentalprofitability.service;
 import com.rentalprofitability.dto.ProfitabilityCompareResponse;
 import com.rentalprofitability.dto.ProfitabilityRequest;
 import com.rentalprofitability.dto.ProfitabilityResponse;
+import com.rentalprofitability.exception.ExternalApiException;
 import com.rentalprofitability.model.Platform;
 import com.rentalprofitability.model.Property;
 import com.rentalprofitability.model.RentalType;
@@ -284,9 +285,17 @@ public class ProfitabilityService {
                 request.currency()
         );
 
-        String rawResponse = openAIService.callOpenAI(prompt);
+        String rawResponse = openAIService.callOpenAI(prompt).trim();
 
-        return Double.parseDouble(rawResponse.trim());
+        try {
+            return Double.parseDouble(rawResponse);
+        } catch (NumberFormatException e) {
+            throw new ExternalApiException(
+                    "OpenAI could not provide a rental estimate for " +
+                            property.getCity() + ", " + property.getCountry() +
+                            ". Try a more specific location.");
+        }
+
     }
 
     private ProfitabilityResponse buildProfitabilityResponse(

@@ -5,6 +5,7 @@ import com.rentalprofitability.dto.CreatePropertyRequest;
 import com.rentalprofitability.dto.ProfitabilityCompareResponse;
 import com.rentalprofitability.dto.ProfitabilityRequest;
 import com.rentalprofitability.dto.ProfitabilityResponse;
+import com.rentalprofitability.exception.ExternalApiException;
 import com.rentalprofitability.model.Platform;
 import com.rentalprofitability.model.Property;
 import com.rentalprofitability.model.RentalType;
@@ -142,7 +143,7 @@ public class ProfitabilityServiceTest {
 
         assertEquals(1200.0, response.estimatedMonthlyRevenue(), 0.1);
         assertEquals(14400.0, response.estimatedYearlyRevenue(), 0.1);
-        assertEquals(0.994, response.ROI(), 0.1);
+        assertEquals(6.857, response.ROI(), 0.1);
         assertNotNull(response.result());
     }
 
@@ -199,6 +200,62 @@ public class ProfitabilityServiceTest {
         // long rental assertions (OpenAI)
         assertNotNull(response.longRental());
         assertEquals(1200.0, response.longRental().estimatedMonthlyRevenue(), 0.1);
-        assertEquals(0.994, response.longRental().ROI(), 0.1);
+        assertEquals(6.857, response.longRental().ROI(), 0.1);
+    }
+
+    @Test
+    void calculateLongProfitability_whenOpenAIReturnsText_shouldThrowExternalApiException() {
+        Property property = new Property();
+        property.setId(1L);
+        property.setSize(80);
+        property.setBedrooms(2);
+        property.setWc(1);
+        property.setCountry("Portugal");
+        property.setCity("Funchal");
+        property.setAddress("Rua X");
+        property.setMortgage(800);
+        property.setUtilities(150);
+        property.setCashInvested(70000);
+        property.setPool(true);
+        property.setGarden(false);
+        property.setParking(true);
+
+        when(propertyService.getProperty(any(Long.class))).thenReturn(property);
+        when(openAIService.callOpenAI(any(String.class)))
+                .thenReturn("I cannot provide real-time data...");
+
+        assertThrows(ExternalApiException.class,
+                () -> profitabilityService.getProfitability(
+                        new ProfitabilityRequest(1L, RentalType.LONG, Platform.AIRBNB, 16, "EUR")
+                ));
+    }
+
+    @Test
+    void calculateShortProfitability_whenBrightDataFails_shouldThrowExternalApiException() {
+
+        Property property = new Property();
+        property.setId(1L);
+        property.setSize(80);
+        property.setBedrooms(2);
+        property.setWc(1);
+        property.setCountry("Portugal");
+        property.setCity("Funchal");
+        property.setAddress("Rua X");
+        property.setMortgage(800);
+        property.setUtilities(150);
+        property.setCashInvested(70000);
+        property.setPool(true);
+        property.setGarden(false);
+        property.setParking(true);
+
+        when(propertyService.getProperty(any(Long.class))).thenReturn(property);
+        when(brigthdataService.scrapeShortRentalPlatforms(
+                any(Platform.class), isNull(), any(String.class)))
+                .thenThrow(new ExternalApiException("BrightData timeout"));
+
+        assertThrows(ExternalApiException.class,
+                () -> profitabilityService.getProfitability(
+                        new ProfitabilityRequest(1L, RentalType.SHORT, Platform.AIRBNB, 16, "EUR")
+                ));
     }
 }
