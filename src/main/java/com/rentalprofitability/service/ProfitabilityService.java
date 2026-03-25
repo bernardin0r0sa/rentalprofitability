@@ -297,22 +297,30 @@ public class ProfitabilityService {
 
         double estimatedMonthlyRevenue;
         double estimatedYearlyRevenue;
+        double managementFeeAmount;
+        double netMonthlyProfit;
+        double netYearlyProfit;
 
         if (rentalType == RentalType.LONG) {
             estimatedMonthlyRevenue = averageRate;
             estimatedYearlyRevenue = averageRate * 12;
+            netMonthlyProfit = estimatedMonthlyRevenue - property.getMortgage();
+            netYearlyProfit = netMonthlyProfit * 12;
+
         } else {
             double occupancyRate = occupancyRateConfig.getOccupancyRate(property.getCity());
             estimatedMonthlyRevenue = averageRate * 30 * occupancyRate;
             estimatedYearlyRevenue = estimatedMonthlyRevenue * 12;
+            managementFeeAmount = estimatedMonthlyRevenue * (propertyManagementFee / 100);
+            netMonthlyProfit = estimatedMonthlyRevenue - (property.getMortgage() + property.getUtilities() + managementFeeAmount);
+            netYearlyProfit = netMonthlyProfit * 12;
+
         }
 
-        double managementFeeAmount = estimatedMonthlyRevenue * (propertyManagementFee / 100);
-        double netMonthlyProfit = estimatedMonthlyRevenue - (property.getMortgage() + property.getUtilities() + managementFeeAmount);
         double ROI = (netMonthlyProfit * 12 / property.getCashInvested()) * 100;
         String result = String.format(
-                "Based on a cash investment of €%.0f, with an estimated monthly revenue of €%.0f, your annual ROI is %.1f%%.",
-                property.getCashInvested(), estimatedMonthlyRevenue, ROI
+                "Based on a cash investment of €%.0f, with an estimated monthly revenue of €%.0f with a net profit of €%.0f , your annual ROI is %.1f%%.",
+                property.getCashInvested(), estimatedMonthlyRevenue, netMonthlyProfit ,ROI
         );
 
         return new ProfitabilityResponse(
@@ -321,6 +329,8 @@ public class ProfitabilityService {
                 estimatedMonthlyRevenue,
                 estimatedYearlyRevenue,
                 ROI,
+                netMonthlyProfit,
+                netYearlyProfit,
                 result
         );
     }
