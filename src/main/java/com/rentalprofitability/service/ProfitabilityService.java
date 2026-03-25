@@ -49,16 +49,15 @@ public class ProfitabilityService {
 
     public ProfitabilityResponse getProfitability(ProfitabilityRequest request) {
         Property property = propertyService.getProperty(request.propertyID());
-        HashMap<Platform, String> marketData = getPlatformData(property, request.platform());
 
-        double averageNightlyRate = switch (request.rentaltype()) {
-            case SHORT -> calculateAverage(marketData);
-            case LONG -> calculateLongAverage(request,property);
+        double averageRate = switch (request.rentaltype()) {
+            case SHORT -> calculateAverage(getPlatformData(property, request.platform()));
+            case LONG -> calculateLongAverage(request, property);
             case COMPARE -> throw new RuntimeException("Use /compare endpoint");
         };
 
         return buildProfitabilityResponse(property, request.rentaltype(),
-                averageNightlyRate, request.propertyManagementFee());
+                averageRate, request.propertyManagementFee());
     }
 
     public ProfitabilityCompareResponse getCompareProfitability(ProfitabilityRequest request) {
